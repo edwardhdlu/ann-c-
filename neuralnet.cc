@@ -20,59 +20,38 @@ input_size{input_size}, output_size{output_size}, hidden_sizes{hidden_sizes}, in
 	intermediates.emplace_back(Matrix {0, 0});
 }
 
-double NeuralNet::sigmoid(double n) {
-	return 1 / (1 + exp(-n));
-}
-
-vector<double> NeuralNet::sigmoid(vector<double> v) {
-	vector<double> result = v;
-	for (auto &n: result) {
-		n = sigmoid(n);
+double NeuralNet::sigmoid(double n, bool deriv) {
+	if (deriv) {
+		return sigmoid(n) * (1 - sigmoid(n));
 	}
-
-	return result;
-}
-
-Matrix NeuralNet::sigmoid(Matrix m) {
-	vector<vector<double>> vector = m.getVector();
-	for (auto &v: vector) {
-		v = sigmoid(v);
+	else {
+		return 1 / (1 + exp(-n));
 	}
-
-	Matrix result {m.getRows(), m.getCols(), vector};
-
-	return result;
 }
 
-double NeuralNet::sigmoidPrime(double n) {
-	return sigmoid(n) * (1 - sigmoid(n));
-}
-
-vector<double> NeuralNet::sigmoidPrime(vector<double> v) {
-	vector<double> result = v;
-	for (auto &n: result) {
-		n = sigmoidPrime(n);
+double NeuralNet::relu(double n, bool deriv) {
+	if (deriv) {
+		return n > 0 ? 1 : 0;
 	}
-
-	return result;
+	else {
+		return n > 0 ? n : 0;
+	}
 }
 
-Matrix NeuralNet::sigmoidPrime(Matrix m) {
-	vector<vector<double>> vector = m.getVector();
-	for (auto &v: vector) {
-		v = sigmoidPrime(v);
+double NeuralNet::htan(double n, bool deriv) {
+	if (deriv) {
+		return 1 - pow(tanh(n), 2);
 	}
-
-	Matrix result {m.getRows(), m.getCols(), vector};
-
-	return result;
+	else {
+		return tanh(n);
+	}
 }
 
 Matrix NeuralNet::forwardProp() {
 	Matrix result = inputs;
 	for (unsigned int i = 0; i < weights.size(); ++i) {
 		result = result * weights[i];
-		result = sigmoid(result);
+		result = activate(sigmoid, result);
 		intermediates[i] = result;
 	}
 
@@ -82,7 +61,7 @@ Matrix NeuralNet::forwardProp() {
 void NeuralNet::backProp() {
 	Matrix error = outputs - forwardProp(); 
 	for (int i = intermediates.size() - 1; i >= 0; --i) {
-		Matrix delta = error.unitMultiply(sigmoidPrime(intermediates[i]));
+		Matrix delta = error.unitMultiply(activate(sigmoid, intermediates[i], true));
 		if (i == 0) {
 			weights[i] = weights[i] + inputs.transpose() * delta;
 		}
@@ -114,7 +93,7 @@ Matrix NeuralNet::getWeights(int i) {
 void NeuralNet::train(int epochs) {
 	for (int i = 0; i < epochs; ++i) {
 		backProp();
-		if (i % 10000 == 0) {
+		if (i % 1000 == 0) {
 			cout << "Error: " << loss() << " after " << i << " epochs" << endl;
 		}
 	}
@@ -124,7 +103,7 @@ Matrix NeuralNet::predict(Matrix input) {
 	Matrix result = input;
 	for (unsigned int i = 0; i < weights.size(); ++i) {
 		result = result * weights[i];
-		result = sigmoid(result);
+		result = activate(sigmoid, result);
 	}
 
 	return result;

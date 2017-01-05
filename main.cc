@@ -10,7 +10,7 @@ int main() {
 	vector<int> hidden {4};
 
 	NeuralNet nn {3, 1, hidden, inputs, outputs};
-	nn.train(50000);
+	nn.train(10000);
 
 	Matrix test1 = nn.predict({1, 3, {{0, 0, 0}}});
 	Matrix test2 = nn.predict({1, 3, {{1, 0, 0}}});

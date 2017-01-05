@@ -7,14 +7,44 @@ public:
 	// constructor
 	NeuralNet(int input_size, int output_size, std::vector<int> hidden_sizes, Matrix inputs, Matrix outputs);
 
-	// sigmoid and derivatives
-	double sigmoid(double n);
-	std::vector<double> sigmoid(std::vector<double> v);
-	Matrix sigmoid(Matrix m);
+	// activation functions
+	static double sigmoid(double n, bool deriv = false);
+	static double relu(double n, bool deriv = false);
+	static double htan(double n, bool deriv = false);
 
-	double sigmoidPrime(double n);
-	std::vector<double> sigmoidPrime(std::vector<double> v);
-	Matrix sigmoidPrime(Matrix m);
+	template<typename F> static double activate(F f, double n, bool deriv = false) {
+		return f(n, deriv);
+	}
+
+	template<typename F> static std::vector<double> activate(F f, std::vector<double> v, bool deriv = false) {
+		std::vector<double> result = v;
+		for (auto &n: result) {
+			if (deriv) {
+				n = f(n, true);
+			}
+			else {
+				n = f(n, false);
+			}
+		}
+
+		return result;
+	}
+
+	template<typename F> static Matrix activate(F f, Matrix m, bool deriv = false) {
+		std::vector<std::vector<double>> vector = m.getVector();
+		for (auto &v: vector) {
+			if (deriv) {
+				v = activate(f, v, true);
+			}
+			else {
+				v = activate(f, v);
+			}
+		}
+
+		Matrix result {m.getRows(), m.getCols(), vector};
+
+		return result;
+	}
 
 	// loss function (average sum of squares)
 	double loss();
