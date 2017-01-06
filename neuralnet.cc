@@ -47,8 +47,8 @@ double NeuralNet::htan(double n, bool deriv) {
 	}
 }
 
-Matrix NeuralNet::forwardProp() {
-	Matrix result = inputs;
+Matrix NeuralNet::feedForward(Matrix input) {
+	Matrix result = input;
 	for (unsigned int i = 0; i < weights.size(); ++i) {
 		result = result * weights[i];
 		result = activate(sigmoid, result);
@@ -58,18 +58,52 @@ Matrix NeuralNet::forwardProp() {
 	return result;
 }
 
-void NeuralNet::backProp() {
-	Matrix error = outputs - forwardProp(); 
-	for (int i = intermediates.size() - 1; i >= 0; --i) {
-		Matrix delta = error.unitMultiply(activate(sigmoid, intermediates[i], true));
-		if (i == 0) {
-			weights[i] = weights[i] + inputs.transpose() * delta;
-		}
-		else {
-			weights[i] = weights[i] + intermediates[i - 1].transpose() * delta;
-		}
+void NeuralNet::backProp(int batch_size) {
+	vector<Matrix> input_batch;
+	vector<Matrix> output_batch;
 
-		error = delta * weights[i].transpose();
+	if (batch_size == 0) {
+		input_batch.emplace_back(inputs);
+		output_batch.emplace_back(outputs);
+	}
+	else {
+		int batches = ceil(inputs.getRows() / batch_size);
+		for (int i = 0; i < batches; ++i) {
+			int a = i * batch_size;
+			int b = min(inputs.getRows() - 1, a + batch_size - 1);
+
+			vector<vector<double>> input_batch_vector;
+			vector<vector<double>> output_batch_vector;
+
+			for (int i = a; i <= b; ++i) {
+				input_batch_vector.emplace_back(inputs.getVector()[i]);
+				output_batch_vector.emplace_back(outputs.getVector()[i]);
+			}
+
+			Matrix in_matrix {batch_size, inputs.getCols(), input_batch_vector};
+			Matrix out_matrix {batch_size, outputs.getCols(), output_batch_vector};
+
+			input_batch.emplace_back(in_matrix);
+			output_batch.emplace_back(out_matrix);
+		}
+	}
+
+	for (unsigned int i = 0; i < input_batch.size(); ++i) {
+		Matrix input = input_batch[i];
+		Matrix output = output_batch[i];
+
+		Matrix error = output - feedForward(input); 
+		for (int i = intermediates.size() - 1; i >= 0; --i) {
+			Matrix delta = error.unitMultiply(activate(sigmoid, intermediates[i], true));
+			if (i == 0) {
+				weights[i] = weights[i] + input.transpose() * delta;
+			}
+			else {
+				weights[i] = weights[i] + intermediates[i - 1].transpose() * delta;
+			}
+
+			error = delta * weights[i].transpose();
+		}
 	}
 }
 
@@ -78,7 +112,7 @@ double square(double n) {
 }
 
 double NeuralNet::loss() {
-	Matrix result = forwardProp();
+	Matrix result = feedForward(inputs);
 	Matrix delta = outputs - result;
 	delta.apply(square);
 	int size = delta.getRows() * delta.getCols();
@@ -92,7 +126,7 @@ Matrix NeuralNet::getWeights(int i) {
 
 void NeuralNet::train(int epochs) {
 	for (int i = 0; i < epochs; ++i) {
-		backProp();
+		backProp(4);
 		if (i % 1000 == 0) {
 			cout << "Error: " << loss() << " after " << i << " epochs" << endl;
 		}

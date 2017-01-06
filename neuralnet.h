@@ -50,8 +50,8 @@ public:
 	double loss();
 
 	// propogation
-	Matrix forwardProp();
-	void backProp();
+	Matrix feedForward(Matrix input);
+	void backProp(int batch_size = 0);
 
 	// ith weight matrix accessor
 	Matrix getWeights(int i);
